@@ -153,19 +153,23 @@ def word_to_excel_bytes(docx_bytes: bytes) -> bytes:
             continue
         if paragraph._element.xpath("ancestor::w:tbl"):
             continue
+
+        # ── verifica fonte ANTES dos filtros de formatação ──────────────────────
+        # Detecta como fonte: (a) texto com padrão "Source:" / URL ou
+        # (b) parágrafo em vermelho (inclui continuações sem prefixo "Source:")
+        if is_source_line(text) or is_red_paragraph(paragraph):
+            if current_idx is None:
+                data.append(["", ""])
+                current_idx = len(data) - 1
+            append_sources(data, current_idx, [text])
+            continue
+
         all_bold       = all(r.bold           for r in paragraph.runs if r.text.strip())
         all_italic     = all(r.italic         for r in paragraph.runs if r.text.strip())
         all_underlined = all(r.font.underline  for r in paragraph.runs if r.text.strip())
         if all_bold or all_italic or all_underlined:
             continue
         if text.startswith("\u201c") and text.endswith("\u201d"):
-            continue
-
-        if is_source_line(text):
-            if current_idx is None:
-                data.append(["", ""])
-                current_idx = len(data) - 1
-            append_sources(data, current_idx, [text])
             continue
 
         if text.startswith("Note:") or re.match(r"^\(\d+\)", text):
