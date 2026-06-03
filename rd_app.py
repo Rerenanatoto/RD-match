@@ -120,6 +120,11 @@ def is_red_paragraph(paragraph) -> bool:
     return bool(runs) and all(_run_is_red(r) for r in runs)
 
 
+def has_tracked_insertion(paragraph) -> bool:
+    """True se o parágrafo contém inserções de controle de alteração (w:ins)."""
+    return bool(paragraph._p.findall('.//' + qn('w:ins')))
+
+
 def clean_text_for_match(text: str) -> str:
     cleaned = URL_RE.sub("", text)
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
@@ -155,9 +160,10 @@ def word_to_excel_bytes(docx_bytes: bytes) -> bytes:
             continue
 
         # ── verifica fonte ANTES dos filtros de formatação ──────────────────────
-        # Detecta como fonte: (a) texto com padrão "Source:" / URL ou
-        # (b) parágrafo em vermelho (inclui continuações sem prefixo "Source:")
-        if is_source_line(text) or is_red_paragraph(paragraph):
+        # Detecta como fonte: (a) texto com padrão "Source:" / URL,
+        # (b) parágrafo em vermelho, ou
+        # (c) parágrafo com controle de alteração / track changes (w:ins)
+        if is_source_line(text) or is_red_paragraph(paragraph) or has_tracked_insertion(paragraph):
             if current_idx is None:
                 data.append(["", ""])
                 current_idx = len(data) - 1
