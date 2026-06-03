@@ -120,11 +120,6 @@ def is_red_paragraph(paragraph) -> bool:
     return bool(runs) and all(_run_is_red(r) for r in runs)
 
 
-def has_tracked_insertion(paragraph) -> bool:
-    """True se o parágrafo contém inserções de controle de alteração (w:ins)."""
-    return bool(paragraph._p.findall('.//' + qn('w:ins')))
-
-
 def clean_text_for_match(text: str) -> str:
     cleaned = URL_RE.sub("", text)
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
@@ -158,24 +153,19 @@ def word_to_excel_bytes(docx_bytes: bytes) -> bytes:
             continue
         if paragraph._element.xpath("ancestor::w:tbl"):
             continue
-
-        # ── verifica fonte ANTES dos filtros de formatação ──────────────────────
-        # Detecta como fonte: (a) texto com padrão "Source:" / URL,
-        # (b) parágrafo em vermelho, ou
-        # (c) parágrafo com controle de alteração / track changes (w:ins)
-        if is_source_line(text) or is_red_paragraph(paragraph) or has_tracked_insertion(paragraph):
-            if current_idx is None:
-                data.append(["", ""])
-                current_idx = len(data) - 1
-            append_sources(data, current_idx, [text])
-            continue
-
         all_bold       = all(r.bold           for r in paragraph.runs if r.text.strip())
         all_italic     = all(r.italic         for r in paragraph.runs if r.text.strip())
         all_underlined = all(r.font.underline  for r in paragraph.runs if r.text.strip())
         if all_bold or all_italic or all_underlined:
             continue
         if text.startswith("\u201c") and text.endswith("\u201d"):
+            continue
+
+        if is_source_line(text):
+            if current_idx is None:
+                data.append(["", ""])
+                current_idx = len(data) - 1
+            append_sources(data, current_idx, [text])
             continue
 
         if text.startswith("Note:") or re.match(r"^\(\d+\)", text):
